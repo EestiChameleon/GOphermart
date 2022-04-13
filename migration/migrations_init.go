@@ -39,7 +39,7 @@ func MigrateInitConnect() error {
 	}
 
 	db, err := migrate.NewWithDatabaseInstance(
-		"file://internal/app/storage/migration/sqlscripts/",
+		"file://migration/sqlscripts/",
 		"postgres", driver)
 	if err != nil {
 		return err
