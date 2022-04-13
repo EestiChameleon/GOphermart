@@ -48,12 +48,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encrP, err := s.EncryptPass(b.Password)
-	if err != nil {
-		resp.NoContent(w, http.StatusInternalServerError)
-		return
-	}
-	u := m.NewUser(b.Login, encrP)
+	u := m.NewUser(b.Login, s.EncryptPass(b.Password))
 
 	if err = u.Add(); err != nil {
 		if errors.Is(err, m.ErrLoginUnavailable) {
@@ -64,7 +59,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := s.JWTEncode("userID", u.ID)
+	token, err := s.JWTEncodeUserID(u.ID)
 	if err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return

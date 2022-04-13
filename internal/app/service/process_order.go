@@ -43,7 +43,7 @@ func ProcessOrder(orderNumber string) error {
 		ord.SetAccrual(orderInfo.Accrual)
 		bal := methods.NewBalanceRecord()
 		bal.OrderNumber = ord.Number
-		bal.Income = ord.Accrual
+		bal.Income = *ord.Accrual
 		return bal.Add()
 	}
 	return nil

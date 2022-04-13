@@ -1,9 +1,8 @@
 package service
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"github.com/EestiChameleon/GOphermart/internal/app/cfg"
 	"github.com/robbert229/jwt"
@@ -13,16 +12,14 @@ var (
 	ErrInvalidToken = errors.New("failed to decode the provided Token")
 )
 
-func EncryptPass(pass string) (string, error) {
-	block, err := aes.NewCipher([]byte(cfg.Envs.CryptoKey))
-	if err != nil {
-		return "", err
-	}
-	plainText := []byte(pass)
-	cfb := cipher.NewCFBEncrypter(block, []byte{35, 46, 57, 24, 85, 35, 24, 74, 87, 35, 88, 98, 66, 32, 14, 05})
-	cipherText := make([]byte, len(plainText))
-	cfb.XORKeyStream(cipherText, plainText)
-	return base64.StdEncoding.EncodeToString(cipherText), nil
+func EncryptPass(pass string) string {
+	h := md5.New()
+	h.Write([]byte(pass))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func JWTEncodeUserID(value interface{}) (string, error) {
+	return JWTEncode("sub", value)
 }
 
 func JWTEncode(key string, value interface{}) (string, error) {
@@ -41,6 +38,10 @@ func JWTEncode(key string, value interface{}) (string, error) {
 	}
 
 	return token, nil
+}
+
+func JWTDecodeUserID(token string) (interface{}, error) {
+	return JWTDecode(token, "sub")
 }
 
 func JWTDecode(token, key string) (interface{}, error) {

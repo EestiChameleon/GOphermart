@@ -20,6 +20,7 @@ func Start() error {
 	router.Use(middleware.RealIP)
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
+	router.Use(mw.GZIP)
 
 	// Routes
 	router.With(mw.AuthCheck).Get("/api/user/orders", h.UserOrdersList)

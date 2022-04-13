@@ -4,9 +4,17 @@ import (
 	"context"
 	"errors"
 	"github.com/EestiChameleon/GOphermart/internal/app/cfg"
-	"github.com/EestiChameleon/GOphermart/internal/app/storage/migration"
+	"github.com/EestiChameleon/GOphermart/migration"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
+
+var (
+	Bonus Bonuser
+)
+
+type Bonuser interface {
+	Add() error
+}
 
 var (
 	Pool        DBStorage
@@ -27,14 +35,14 @@ func InitConnection() error {
 	if err := migration.UpGophermartStorage(); err != nil {
 		return err
 	}
+	migration.MigrateCloseConnect()
 
 	return connectToDB()
 }
 
 func Shutdown() {
 	Pool.DB.Close()
-	migration.DownGophermartStorage()
-	migration.MigrateCloseConnect()
+
 }
 
 func connectToDB() error {

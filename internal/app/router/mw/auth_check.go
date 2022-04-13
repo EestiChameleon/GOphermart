@@ -13,9 +13,10 @@ func AuthCheck(next http.Handler) http.Handler {
 		cookie, err := r.Cookie("gophermartID")
 		if err != nil {
 			resp.NoContent(w, http.StatusUnauthorized)
+			return
 		}
 
-		userID, err := service.JWTDecode(cookie.Value, "userID")
+		userID, err := service.JWTDecodeUserID(cookie.Value)
 		if err != nil {
 			resp.NoContent(w, http.StatusInternalServerError)
 			return

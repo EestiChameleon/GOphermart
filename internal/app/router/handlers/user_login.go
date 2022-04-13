@@ -58,18 +58,12 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encrP, err := s.EncryptPass(b.Password)
-	if err != nil {
-		resp.NoContent(w, http.StatusInternalServerError)
-		return
-	}
-
-	if encrP != u.Password {
+	if s.EncryptPass(b.Password) != u.Password {
 		resp.NoContent(w, http.StatusUnauthorized)
 		return
 	}
 
-	token, err := s.JWTEncode("userID", u.ID)
+	token, err := s.JWTEncodeUserID(u.ID)
 	if err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return

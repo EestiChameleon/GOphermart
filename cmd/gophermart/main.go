@@ -9,15 +9,15 @@ import (
 
 func main() {
 	if err := cfg.GetEnvs(); err != nil {
-		log.Fatal(err)
+		log.Fatal("Env parse err:", err)
 	}
 
 	if err := storage.InitConnection(); err != nil {
-		log.Fatal(err)
+		log.Fatal("Storage init err:", err)
 	}
 	defer storage.Shutdown()
 
 	if err := router.Start(); err != nil {
-		log.Fatal(err)
+		log.Fatal("server init err:", err)
 	}
 }
