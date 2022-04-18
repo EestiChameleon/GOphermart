@@ -2,6 +2,8 @@ package service
 
 import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/shopspring/decimal"
 	"log"
 	"net/http"
 	"time"
@@ -51,26 +53,46 @@ func proccessOrders(accrualClient AccrualSystem) error {
 			if accrualClient.ReturnStatus() == http.StatusOK {
 				// successful request
 				if orderInfo.Status == "INVALID" {
-					o := methods.NewOrder(order.Number)
-					if err = o.UpdateStatus("INVALID"); err != nil {
-						log.Printf("update order #%s failed: %v", order.Number, err)
+					if err = InvalidOrder(order.Number); err != nil {
+						cmlogger.Sug.Infow("update invalid order failed", "order", order.Number, "err", err)
 						continue
 					}
-					b := methods.NewBalanceRecord()
-					b.OrderNumber = o.Number
-					b.Income = o.Accrual
 				}
 				if orderInfo.Status == "PROCESSED" {
-					o := methods.NewOrder(order.Number)
-					if err = o.SetProcessedAndAccrual(&order.Accrual.Decimal); err != nil {
-						log.Printf("update order #%s failed: %v", order.Number, err)
+					if err = ProcessedOrder(order.Number, order.Accrual.Decimal); err != nil {
+						cmlogger.Sug.Infow("update processed order failed",
+							"order", order.Number,
+							"accrual", order.Accrual.Decimal,
+							"err", err)
 						continue
 					}
 				}
 			} else {
-				log.Println("accrual system response status code:", accrualClient.ReturnStatus())
+				cmlogger.Sug.Infow("accrual system NOK response status code",
+					"status code", accrualClient.ReturnStatus())
 			}
 		}
+	}
+
+	return nil
+}
+
+func InvalidOrder(number string) error {
+	o := methods.NewOrder(number)
+	return o.UpdateStatus("INVALID")
+}
+
+func ProcessedOrder(number string, accrual decimal.Decimal) error {
+	o := methods.NewOrder(number)
+	if err := o.SetProcessedAndAccrual(&accrual); err != nil {
+		return err
+	}
+
+	b := methods.NewBalanceRecord()
+	b.OrderNumber = o.Number
+	b.Income = o.Accrual
+	if err := b.Add(); err != nil {
+		return err
 	}
 
 	return nil
