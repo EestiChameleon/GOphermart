@@ -62,7 +62,7 @@ func proccessOrders(accrualClient AccrualSystem) error {
 				}
 				if orderInfo.Status == "PROCESSED" {
 					o := methods.NewOrder(order.Number)
-					if err = o.SetProcessedAndAccrual(order.Accrual); err != nil {
+					if err = o.SetProcessedAndAccrual(&order.Accrual.Decimal); err != nil {
 						log.Printf("update order #%s failed: %v", order.Number, err)
 						continue
 					}

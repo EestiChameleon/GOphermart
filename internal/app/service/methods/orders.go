@@ -15,11 +15,11 @@ var (
 )
 
 type Order struct {
-	Number     string           `json:"number"`
-	UserID     int              `json:"user_id"`
-	UploadedAt time.Time        `json:"uploaded_at"` // my time type
-	Status     string           `json:"status"`
-	Accrual    *decimal.Decimal `json:"accrual,omitempty"`
+	Number     string              `json:"number"`
+	UserID     int                 `json:"user_id"`
+	UploadedAt time.Time           `json:"uploaded_at"` // my time type
+	Status     string              `json:"status"`
+	Accrual    decimal.NullDecimal `json:"accrual,omitempty"`
 }
 
 func NewOrder(number string) *Order {
@@ -28,7 +28,7 @@ func NewOrder(number string) *Order {
 		UserID:     db.Pool.ID,
 		UploadedAt: time.Now(),
 		Status:     "NEW",
-		Accrual:    &decimal.Decimal{}, // костыль if accrual 0 => set accrual = nil
+		Accrual:    decimal.NullDecimal{},
 	}
 }
 

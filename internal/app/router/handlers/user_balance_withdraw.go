@@ -54,7 +54,7 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !res.Current.GreaterThanOrEqual(*b.Sum) {
+	if !res.Current.GreaterThanOrEqual(b.Sum.Decimal) {
 		resp.NoContent(w, http.StatusPaymentRequired)
 		return
 	}

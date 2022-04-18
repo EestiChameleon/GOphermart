@@ -14,12 +14,12 @@ var (
 )
 
 type Balance struct {
-	ID          int              `json:"id"`
-	UserID      int              `json:"user_id"`
-	ProcessedAt time.Time        `json:"processed_at"`
-	Income      *decimal.Decimal `json:"income"`
-	Outcome     *decimal.Decimal `json:"outcome"`
-	OrderNumber string           `json:"order_number"`
+	ID          int                 `json:"id"`
+	UserID      int                 `json:"user_id"`
+	ProcessedAt time.Time           `json:"processed_at"`
+	Income      decimal.NullDecimal `json:"income"`
+	Outcome     decimal.NullDecimal `json:"outcome"`
+	OrderNumber string              `json:"order_number"`
 }
 
 func NewBalanceRecord() *Balance {
@@ -27,8 +27,8 @@ func NewBalanceRecord() *Balance {
 		ID:          0,
 		UserID:      db.Pool.ID,
 		ProcessedAt: time.Now(),
-		Income:      nil,
-		Outcome:     nil,
+		Income:      decimal.NullDecimal{},
+		Outcome:     decimal.NullDecimal{},
 		OrderNumber: "",
 	}
 }
@@ -59,8 +59,8 @@ func (b *Balance) GetBalanceAndWithdrawnByUserID() (*models.BalanceData, error) 
 	}
 
 	return &models.BalanceData{
-		Current:   &c.Decimal,
-		Withdrawn: &w.Decimal,
+		Current:   c.Decimal,
+		Withdrawn: c.Decimal,
 	}, nil
 }
 

@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS orders
     user_id     int           not null,
     uploaded_at timestamp with time zone not null,
     status      STATS         not null,
-    accrual     numeric default 0 not null
+    accrual     numeric
 );
 create unique index orders_number_uindex
     on orders (number);
