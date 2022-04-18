@@ -80,10 +80,10 @@ func (o *Order) UpdateStatus(status string) error {
 	return nil
 }
 
-func (o *Order) SetAccrual(value decimal.Decimal) error {
+func (o *Order) SetProcessedAndAccrual(value *decimal.Decimal) error {
 	tag, err := db.Pool.DB.Exec(ctx,
-		"UPDATE orders SET accrual = $1 WHERE number = $2;",
-		value, o.Number)
+		"UPDATE orders SET status = $2, accrual = $3 WHERE number = $1;",
+		o.Number, "PROCESSED", value)
 
 	if err != nil {
 		return err
@@ -100,5 +100,12 @@ func GetOrdersListByUserID() ([]*Order, error) {
 	var list []*Order
 	err := pgxscan.Select(ctx, db.Pool.DB, &list,
 		"SELECT * FROM orders WHERE user_id=$1", db.Pool.ID)
+	return list, err
+}
+
+func GetOrdersListNotFinal() ([]*Order, error) {
+	var list []*Order
+	err := pgxscan.Select(ctx, db.Pool.DB, &list,
+		"SELECT number FROM orders WHERE status in ('NEW', 'PROCESSING');")
 	return list, err
 }

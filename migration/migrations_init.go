@@ -3,6 +3,7 @@ package migration
 import (
 	"database/sql"
 	"errors"
+	"github.com/EestiChameleon/GOphermart/internal/app/cfg"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -26,9 +27,9 @@ func DownGophermartStorage() error {
 }
 
 func MigrateInitConnect() error {
-	// как подключаться к яндекс базе???
 	conn, err := sql.Open("postgres",
-		"user=maximiliank password='' dbname=yandex_practicum_db sslmode=disable")
+		cfg.Envs.DatabaseURI)
+
 	if err != nil {
 		return err
 	}

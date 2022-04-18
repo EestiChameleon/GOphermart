@@ -9,14 +9,6 @@ import (
 )
 
 var (
-	Bonus Bonuser
-)
-
-type Bonuser interface {
-	Add() error
-}
-
-var (
 	Pool        DBStorage
 	ErrNotFound = errors.New("no records found")
 )

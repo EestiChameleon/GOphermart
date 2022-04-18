@@ -56,7 +56,7 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 			resp.NoContent(w, http.StatusInternalServerError)
 			return
 		}
-		go service.ProcessOrder(orderNumber)
+
 		resp.NoContent(w, http.StatusAccepted)
 		return
 	}

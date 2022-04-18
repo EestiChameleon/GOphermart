@@ -5,6 +5,7 @@ import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/models"
 	"io"
 	"net/http"
 )
@@ -27,7 +28,7 @@ Content-Type: application/json
 500 — внутренняя ошибка сервера.
 */
 func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
-	var b resp.WithdrawData
+	var b models.WithdrawData
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		resp.NoContent(w, http.StatusBadRequest)
@@ -53,11 +54,10 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !res.Current.GreaterThanOrEqual(b.Sum) {
+	if !res.Current.GreaterThanOrEqual(*b.Sum) {
 		resp.NoContent(w, http.StatusPaymentRequired)
 		return
 	}
-
 	// withdrawn record save
 	blnc.Outcome = b.Sum
 	blnc.OrderNumber = b.Order

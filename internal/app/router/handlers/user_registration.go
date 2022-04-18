@@ -6,6 +6,7 @@ import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	s "github.com/EestiChameleon/GOphermart/internal/app/service"
 	m "github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/models"
 	"io"
 	"net/http"
 )
@@ -30,7 +31,7 @@ Content-Type: application/json
 */
 
 func UserRegister(w http.ResponseWriter, r *http.Request) {
-	var b resp.LoginData
+	var b models.LoginData
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		resp.NoContent(w, http.StatusBadRequest)

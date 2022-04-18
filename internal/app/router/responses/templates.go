@@ -2,7 +2,6 @@ package responses
 
 import (
 	"encoding/json"
-	"github.com/shopspring/decimal"
 	"net/http"
 	"time"
 )
@@ -30,37 +29,6 @@ const (
 	MIMETextPlainCharsetUTF8       = MIMETextPlain + "; " + charsetUTF8
 	MIMEMultipartForm              = "multipart/form-data"
 )
-
-// LoginData - структура данных логин/пароль пользователя
-type LoginData struct {
-	Login    string `json:"login"`
-	Password string `json:"password"`
-}
-
-// BalanceData - структура для запроса на вывод данных о текущем состоянии бонусного счета пользователя
-type BalanceData struct {
-	Current   decimal.Decimal `json:"current"`
-	Withdrawn decimal.Decimal `json:"withdrawn"`
-}
-
-// WithdrawData - структура входящего запроса на списание бонусов в счет оплаты заказа
-type WithdrawData struct {
-	Order string          `json:"order"`
-	Sum   decimal.Decimal `json:"sum"`
-}
-
-// WithdrawalsData - структура для запроса на вывод данных обо всех операциях списания бонусов
-type WithdrawalsData struct {
-	Order       string          `json:"order"`
-	Sum         decimal.Decimal `json:"sum"`
-	ProcessedAt time.Time       `json:"processed_at"`
-}
-
-type OrderAccrualInfo struct {
-	Order   string          `json:"order"`
-	Status  string          `json:"status"`
-	Accrual decimal.Decimal `json:"accrual"`
-}
 
 func JSON(w http.ResponseWriter, code int, i interface{}) {
 	data, err := json.Marshal(i)

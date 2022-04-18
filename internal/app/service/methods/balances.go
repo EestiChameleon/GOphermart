@@ -2,8 +2,8 @@ package methods
 
 import (
 	"errors"
-	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
+	"github.com/EestiChameleon/GOphermart/internal/models"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/shopspring/decimal"
 	"time"
@@ -14,12 +14,12 @@ var (
 )
 
 type Balance struct {
-	ID          int             `json:"id"`
-	UserID      int             `json:"user_id"`
-	ProcessedAt time.Time       `json:"processed_at"`
-	Income      decimal.Decimal `json:"income"`
-	Outcome     decimal.Decimal `json:"outcome"`
-	OrderNumber string          `json:"order_number"`
+	ID          int              `json:"id"`
+	UserID      int              `json:"user_id"`
+	ProcessedAt time.Time        `json:"processed_at"`
+	Income      *decimal.Decimal `json:"income"`
+	Outcome     *decimal.Decimal `json:"outcome"`
+	OrderNumber string           `json:"order_number"`
 }
 
 func NewBalanceRecord() *Balance {
@@ -27,8 +27,8 @@ func NewBalanceRecord() *Balance {
 		ID:          0,
 		UserID:      db.Pool.ID,
 		ProcessedAt: time.Now(),
-		Income:      decimal.Decimal{},
-		Outcome:     decimal.Decimal{},
+		Income:      nil,
+		Outcome:     nil,
 		OrderNumber: "",
 	}
 }
@@ -50,7 +50,7 @@ func (b *Balance) Add() error {
 	return nil
 }
 
-func (b *Balance) GetBalanceAndWithdrawnByUserID() (*resp.BalanceData, error) {
+func (b *Balance) GetBalanceAndWithdrawnByUserID() (*models.BalanceData, error) {
 	var c, w decimal.NullDecimal
 	if err := db.Pool.DB.QueryRow(ctx,
 		"SELECT sum(income)-sum(outcome) as current, sum(outcome) as withdraw FROM balances WHERE user_id=$1;",
@@ -58,9 +58,9 @@ func (b *Balance) GetBalanceAndWithdrawnByUserID() (*resp.BalanceData, error) {
 		return nil, err
 	}
 
-	return &resp.BalanceData{
-		Current:   c.Decimal,
-		Withdrawn: w.Decimal,
+	return &models.BalanceData{
+		Current:   &c.Decimal,
+		Withdrawn: &w.Decimal,
 	}, nil
 }
 

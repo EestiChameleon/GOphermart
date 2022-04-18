@@ -3,9 +3,9 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"github.com/EestiChameleon/GOphermart/internal/app/cfg"
-	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
+	"github.com/shopspring/decimal"
 	"io"
+	"log"
 	"net/http"
 )
 
@@ -50,39 +50,88 @@ Errors:
 */
 
 var (
+	AccrualBot          AccrualSystem
 	ErrAccSysTooManyReq = errors.New("accrual system too many requests")
 	ErrAccSysInternal   = errors.New("accrual system internal error")
 )
 
-func GetOrderAccrualInfo(orderNumber string) (*resp.OrderAccrualInfo, error) {
+type AccrualSystem interface {
+	GetOrderInfo(orderNumber string) *OrderAccrualInfo
+	ReturnStatus() int
+}
+
+// OrderAccrualInfo - response
+type OrderAccrualInfo struct {
+	Order   string          `json:"order"`
+	Status  string          `json:"status"`
+	Accrual decimal.Decimal `json:"accrual"`
+}
+
+type AccrualClient struct {
+	AccrualSystemAddress string
+	RespStatusCode       int
+}
+
+func NewAccrualClient(address string) *AccrualClient {
+	return &AccrualClient{
+		AccrualSystemAddress: address,
+	}
+}
+
+func (ac *AccrualClient) GetOrderInfo(orderNumber string) *OrderAccrualInfo {
 	client := http.Client{}
-	accSysPath := cfg.Envs.AccrualSysAddr + "/api/orders/" + orderNumber
+	accSysPath := ac.AccrualSystemAddress + "/api/orders/" + orderNumber
 	getReq, err := http.NewRequest(http.MethodGet, accSysPath, nil)
 	if err != nil {
-		return nil, err
+		log.Println("Accrual System NEW GET request err:", err)
 	}
 	res, err := client.Do(getReq)
 	if err != nil {
-		return nil, err
+		log.Println("Accrual System DO GET request err:", err)
 	}
+
+	defer res.Body.Close()
 
 	switch res.StatusCode {
 	case http.StatusTooManyRequests:
-		return nil, ErrAccSysTooManyReq
+		ac.RespStatusCode = http.StatusTooManyRequests
+		return nil
 	case http.StatusInternalServerError:
-		return nil, ErrAccSysInternal
+		ac.RespStatusCode = http.StatusInternalServerError
+		return nil
 	}
 
-	orderAccInf := new(resp.OrderAccrualInfo)
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		ac.RespStatusCode = http.StatusInternalServerError
+		return nil
 	}
 
-	err = json.Unmarshal(data, orderAccInf)
+	orderInfo := new(OrderAccrualInfo)
+
+	err = json.Unmarshal(data, &orderInfo)
 	if err != nil {
-		return nil, err
+		ac.RespStatusCode = http.StatusInternalServerError
+		return nil
 	}
 
-	return orderAccInf, nil
+	ac.RespStatusCode = res.StatusCode
+	return orderInfo
 }
+
+func (ac *AccrualClient) ReturnStatus() int {
+	return ac.RespStatusCode
+}
+
+/*
+
+
+func main() {
+	accrualClient := accrual.NewAccrualClient(cfg.Envs.AccrualSysAddr)
+
+	db := sql.Conn("dsds")
+
+	go pollOrderCron(db, accrualClient)
+}
+
+*/

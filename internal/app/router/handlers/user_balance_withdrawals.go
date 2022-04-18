@@ -3,6 +3,7 @@ package handlers
 import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/models"
 	"net/http"
 )
 
@@ -28,7 +29,7 @@ Content-Length: 0
 500 — внутренняя ошибка сервера.
 */
 func UserBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
-	var ubw []*resp.WithdrawalsData
+	var ubw []*models.WithdrawalsData
 	if err := methods.GetUserWithdrawals(&ubw); err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return

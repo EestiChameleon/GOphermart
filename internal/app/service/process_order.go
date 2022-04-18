@@ -1,9 +1,9 @@
 package service
 
 import (
-	"errors"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -15,36 +15,63 @@ INVALID — система расчёта вознаграждений отка�
 PROCESSED — данные по заказу проверены и информация о расчёте успешно получена.
 */
 
-func ProcessOrder(orderNumber string) error {
-	// func to get all orders where the status isn't final? and then run in loop
-	orderInfo, err := GetOrderAccrualInfo(orderNumber)
-	if err != nil {
-		if errors.Is(err, ErrAccSysTooManyReq) {
-			time.Sleep(time.Second * 60)
-			return ProcessOrder(orderInfo.Order)
-		}
-		log.Println("[ERROR] accrual system", err)
-	}
-	ord := methods.NewOrder(orderInfo.Order)
+func PollOrderCron(accrualClient AccrualSystem, cronPeriod time.Duration) {
+	ticker := time.NewTicker(cronPeriod)
 
-	switch orderInfo.Status {
-	case "REGISTERED": // not final status - wait and ask again
-		ord.UpdateStatus("PROCESSING")
-		time.Sleep(time.Second * 60)
-		return ProcessOrder(orderInfo.Order)
-	case "PROCESSING": // not final status - wait and ask again
-		ord.UpdateStatus("PROCESSING")
-		time.Sleep(time.Second * 60)
-		return ProcessOrder(orderInfo.Order)
-	case "INVALID": // final status - error, update data in table orders
-		return ord.UpdateStatus("INVALID")
-	case "PROCESSED": // final status - success, update data in table orders
-		ord.UpdateStatus("PROCESSED")
-		ord.SetAccrual(orderInfo.Accrual)
-		bal := methods.NewBalanceRecord()
-		bal.OrderNumber = ord.Number
-		bal.Income = *ord.Accrual
-		return bal.Add()
+	for {
+		select {
+		case <-ticker.C:
+			if err := proccessOrders(accrualClient); err != nil {
+				log.Println("PollOrderCron err:", err)
+				continue
+			}
+		}
 	}
+}
+
+func proccessOrders(accrualClient AccrualSystem) error {
+	// get all orders with NOT final status
+	orders, err := methods.GetOrdersListNotFinal()
+	if err != nil {
+		log.Println("select orders from DB err:", err)
+		return err
+	}
+
+	for _, order := range orders {
+		switch order.Status {
+		case "NEW":
+			o := methods.NewOrder(order.Number)
+			if err = o.UpdateStatus("PROCESSING"); err != nil {
+				log.Printf("update order #%s failed: %v", order.Number, err)
+			}
+			continue
+
+		case "PROCESSING":
+			orderInfo := accrualClient.GetOrderInfo(order.Number)
+			if accrualClient.ReturnStatus() == http.StatusOK {
+				// successful request
+				if orderInfo.Status == "INVALID" {
+					o := methods.NewOrder(order.Number)
+					if err = o.UpdateStatus("INVALID"); err != nil {
+						log.Printf("update order #%s failed: %v", order.Number, err)
+						continue
+					}
+					b := methods.NewBalanceRecord()
+					b.OrderNumber = o.Number
+					b.Income = o.Accrual
+				}
+				if orderInfo.Status == "PROCESSED" {
+					o := methods.NewOrder(order.Number)
+					if err = o.SetProcessedAndAccrual(order.Accrual); err != nil {
+						log.Printf("update order #%s failed: %v", order.Number, err)
+						continue
+					}
+				}
+			} else {
+				log.Println("accrual system response status code:", accrualClient.ReturnStatus())
+			}
+		}
+	}
+
 	return nil
 }
