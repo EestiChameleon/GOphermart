@@ -28,7 +28,7 @@ func UserBalance(w http.ResponseWriter, r *http.Request) {
 	b := methods.NewBalanceRecord()
 
 	if res, err := b.GetBalanceAndWithdrawnByUserID(); err != nil {
-		cmlogger.Sug.Error("user balance err:", err)
+		cmlogger.Sug.Errorf("user balance err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	} else {
