@@ -39,6 +39,8 @@ func proccessOrders(accrualClient AccrualSystem) error {
 		return err
 	}
 
+	cmlogger.Sug.Infow("--- orders info ---", "Orders", orders)
+
 	for _, order := range orders {
 		switch order.Status {
 		case "NEW":
