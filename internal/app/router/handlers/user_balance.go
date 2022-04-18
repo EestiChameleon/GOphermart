@@ -3,6 +3,8 @@ package handlers
 import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
+	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"net/http"
 )
 
@@ -26,9 +28,11 @@ func UserBalance(w http.ResponseWriter, r *http.Request) {
 	b := methods.NewBalanceRecord()
 
 	if res, err := b.GetBalanceAndWithdrawnByUserID(); err != nil {
+		cmlogger.Sug.Error("user balance err:", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	} else {
+		cmlogger.Sug.Infow("get user balance", "UserID", db.Pool.ID, "balance", res)
 		resp.JSON(w, http.StatusOK, res)
 	}
 }

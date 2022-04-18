@@ -5,34 +5,36 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/router"
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	"github.com/EestiChameleon/GOphermart/internal/app/storage"
-	"log"
+	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"time"
 )
 
 func main() {
+	cmlogger.InitLogger()
+
 	// parsing of the environments + flags
 	if err := cfg.GetEnvs(); err != nil {
-		log.Fatal("Env parse err:", err)
+		cmlogger.Sug.Fatal("Env parse err:", err)
 	}
-	log.Println("envs parsed")
+	cmlogger.Sug.Info("envs parsed")
 
 	// init DB connection + migrations
 	if err := storage.InitConnection(); err != nil {
-		log.Fatal("Storage init err:", err)
+		cmlogger.Sug.Fatal("Storage init err:", err)
 	}
 	defer storage.Shutdown()
-	log.Println("DB connected")
+	cmlogger.Sug.Info("DB connected")
 
 	// init accrual instance
 	service.AccrualBot = service.NewAccrualClient(cfg.Envs.AccrualSysAddr)
-	log.Println("accrual bot initiated. Address:", cfg.Envs.AccrualSysAddr)
+	cmlogger.Sug.Infow("accrual bot initiated", "Address:", cfg.Envs.AccrualSysAddr)
 
 	// start the order check loop
 	go service.PollOrderCron(service.AccrualBot, time.Second*60)
-	log.Println("PollOrderCron launched")
+	cmlogger.Sug.Info("PollOrderCron launched")
 
 	// start the service
 	if err := router.Start(); err != nil {
-		log.Fatal("server init err:", err)
+		cmlogger.Sug.Fatal("server init err:", err)
 	}
 }

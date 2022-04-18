@@ -58,10 +58,18 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		resp.NoContent(w, http.StatusPaymentRequired)
 		return
 	}
-	// withdrawn record save
+	// withdrawn record save and add new order record
 	blnc.Outcome = b.Sum
 	blnc.OrderNumber = b.Order
+
+	ordr := methods.NewOrder(b.Order)
+
 	if err = blnc.Add(); err != nil {
+		resp.NoContent(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err = ordr.Add(); err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}

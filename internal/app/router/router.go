@@ -4,9 +4,9 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/cfg"
 	h "github.com/EestiChameleon/GOphermart/internal/app/router/handlers"
 	"github.com/EestiChameleon/GOphermart/internal/app/router/mw"
+	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"log"
 	"net/http"
 	"time"
 )
@@ -40,6 +40,6 @@ func Start() error {
 		// ReadTimeout: 30 * time.Second, // customize http.Server timeouts
 	}
 
-	log.Println("SERVER STARTED AT", time.Now().Format(time.RFC3339))
+	cmlogger.Sug.Infow("SERVER STARTED", "Time", time.Now().Format(time.RFC3339))
 	return s.ListenAndServe()
 }

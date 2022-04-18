@@ -34,6 +34,16 @@ func NewBalanceRecord() *Balance {
 }
 
 func (b *Balance) Add() error {
+	if !b.Income.Valid {
+		b.Income.Valid = true
+		b.Income.Decimal = decimal.NewFromInt(0)
+	}
+
+	if !b.Outcome.Valid {
+		b.Outcome.Valid = true
+		b.Outcome.Decimal = decimal.NewFromInt(0)
+	}
+
 	err := db.Pool.DB.QueryRow(ctx,
 		"INSERT INTO balances(user_id, processed_at, income, outcome, order_number) "+
 			"VALUES ($1, $2, $3, $4, $5) RETURNING id;",
@@ -60,7 +70,7 @@ func (b *Balance) GetBalanceAndWithdrawnByUserID() (*models.BalanceData, error) 
 
 	return &models.BalanceData{
 		Current:   c.Decimal,
-		Withdrawn: c.Decimal,
+		Withdrawn: w.Decimal,
 	}, nil
 }
 

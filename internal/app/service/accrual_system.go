@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/shopspring/decimal"
 	"io"
 	"log"
@@ -50,9 +49,7 @@ Errors:
 */
 
 var (
-	AccrualBot          AccrualSystem
-	ErrAccSysTooManyReq = errors.New("accrual system too many requests")
-	ErrAccSysInternal   = errors.New("accrual system internal error")
+	AccrualBot AccrualSystem
 )
 
 type AccrualSystem interface {
@@ -122,16 +119,3 @@ func (ac *AccrualClient) GetOrderInfo(orderNumber string) *OrderAccrualInfo {
 func (ac *AccrualClient) ReturnStatus() int {
 	return ac.RespStatusCode
 }
-
-/*
-
-
-func main() {
-	accrualClient := accrual.NewAccrualClient(cfg.Envs.AccrualSysAddr)
-
-	db := sql.Conn("dsds")
-
-	go pollOrderCron(db, accrualClient)
-}
-
-*/
