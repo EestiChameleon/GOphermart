@@ -20,18 +20,15 @@ PROCESSED — данные по заказу проверены и информ�
 func PollOrderCron(accrualClient AccrualSystem, cronPeriod time.Duration) {
 	ticker := time.NewTicker(cronPeriod)
 
-	for {
-		select {
-		case <-ticker.C:
-			if err := proccessOrders(accrualClient); err != nil {
-				log.Println("PollOrderCron err:", err)
-				continue
-			}
+	for range ticker.C {
+		if err := processOrders(accrualClient); err != nil {
+			log.Println("PollOrderCron err:", err)
+			continue
 		}
 	}
 }
 
-func proccessOrders(accrualClient AccrualSystem) error {
+func processOrders(accrualClient AccrualSystem) error {
 	// get all orders with NOT final status
 	orders, err := methods.GetOrdersListNotFinal()
 	if err != nil {

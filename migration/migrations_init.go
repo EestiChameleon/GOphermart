@@ -27,15 +27,7 @@ func DownGophermartStorage() error {
 }
 
 func MigrateInitConnect() error {
-	// для локальных тестов с сервером без SSL
-	var dbLink string
-	if cfg.Envs.DatabaseURI == "postgresql://localhost:5432/yandex_practicum_db" {
-		dbLink = "user=maximiliank password='' dbname=yandex_practicum_db sslmode=disable"
-	} else {
-		dbLink = cfg.Envs.DatabaseURI
-	}
-
-	conn, err := sql.Open("postgres", dbLink)
+	conn, err := sql.Open("postgres", cfg.Envs.DatabaseURI)
 	if err != nil {
 		return err
 	}
