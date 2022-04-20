@@ -68,7 +68,7 @@ func processOrders(accrualClient accrual.AccrualSystem) error {
 				}
 			}
 			if orderInfo.Status == accrual.OrderStatusProcessed {
-				if err = ProcessedOrder(order, order.Accrual.Decimal); err != nil {
+				if err = ProcessedOrder(order, orderInfo.Accrual); err != nil {
 					cmlogger.Sug.Infow("update processed order failed",
 						"order", order.Number,
 						"accrual", order.Accrual.Decimal,
@@ -86,6 +86,7 @@ func InvalidOrder(order *methods.Order) error {
 }
 
 func ProcessedOrder(order *methods.Order, accrualValue decimal.Decimal) error {
+	cmlogger.Sug.Infow("PROCESSED order", "Number", order.Number, "Accrual", accrualValue)
 	if err := order.UpdStatusSetAccrual(OrderStatusProcessed, accrualValue); err != nil {
 		return err
 	}
@@ -93,7 +94,8 @@ func ProcessedOrder(order *methods.Order, accrualValue decimal.Decimal) error {
 	order.Accrual.Decimal = accrualValue
 	order.Accrual.Valid = true
 	b := methods.NewBalanceRecord(order.UserID, order.Number)
-	b.Income = order.Accrual
+	b.Income.Decimal = accrualValue
+	b.Income.Valid = true
 	if err := b.Add(); err != nil {
 		return err
 	}

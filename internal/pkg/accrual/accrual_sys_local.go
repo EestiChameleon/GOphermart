@@ -1,12 +1,10 @@
 package accrual
 
 import (
-	"encoding/json"
-	"errors"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"github.com/shopspring/decimal"
-	"io"
-	"net/http"
+	"math/rand"
+	"time"
 )
 
 // GetOrderAccrualInfo is a method, that makes a request GET /api/orders/{orderNumber} to the Accrual System
@@ -50,73 +48,59 @@ Errors:
 */
 
 const (
-	OrderStatusRegistered = "REGISTERED"
-	OrderStatusInvalid    = "INVALID"
-	OrderStatusProcessing = "PROCESSING"
-	OrderStatusProcessed  = "PROCESSED"
+	TestOrderStatusRegistered = "REGISTERED"
+	TestOrderStatusInvalid    = "INVALID"
+	TestOrderStatusProcessing = "PROCESSING"
+	TestOrderStatusProcessed  = "PROCESSED"
 )
 
-var (
-	AccrualBot          AccrualSystem
-	ErrAccSysTooManyReq = errors.New("accrual system too many requests")
-	ErrAccSysInternal   = errors.New("accrual system internal error")
-)
-
-type AccrualSystem interface {
-	GetOrderInfo(orderNumber string) (*OrderAccrualInfo, error)
-}
-
-// OrderAccrualInfo - response
-type OrderAccrualInfo struct {
-	Order   string          `json:"order"`
-	Status  string          `json:"status"`
-	Accrual decimal.Decimal `json:"accrual"`
-}
-
-type AccrualClient struct {
+type TestAccrualClient struct {
 	AccrualSystemAddress string
 }
 
-func NewAccrualClient(address string) *AccrualClient {
-	return &AccrualClient{
+func NewTestAccrualClient(address string) *TestAccrualClient {
+	return &TestAccrualClient{
 		AccrualSystemAddress: address,
 	}
 }
 
-func (ac *AccrualClient) GetOrderInfo(orderNumber string) (*OrderAccrualInfo, error) {
-	client := http.Client{}
-	accSysPath := ac.AccrualSystemAddress + "/api/orders/" + orderNumber
-	getReq, err := http.NewRequest(http.MethodGet, accSysPath, nil)
-	if err != nil {
-		return nil, err
-	}
-	res, err := client.Do(getReq)
-	if err != nil {
-		return nil, err
-	}
-
-	defer res.Body.Close()
-
-	switch res.StatusCode {
-	case http.StatusTooManyRequests:
+func (ac *TestAccrualClient) GetOrderInfo(orderNumber string) (*OrderAccrualInfo, error) {
+	x := GetRand(4)
+	switch x {
+	case 1: // processing / registered
+		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusProcessing)
+		return newOrderInfo(orderNumber, TestOrderStatusProcessing), nil
+	case 2: // invalid
+		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusInvalid)
+		return newOrderInfo(orderNumber, TestOrderStatusInvalid), nil
+	case 3: // processed
+		order := newOrderInfo(orderNumber, TestOrderStatusProcessed)
+		order.Accrual = GetAccrual()
+		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusProcessed, "Accrual", order.Accrual)
+		return order, nil
+	case 0:
 		return nil, ErrAccSysTooManyReq
-	case http.StatusInternalServerError:
-		return nil, ErrAccSysInternal
+	default:
+		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusRegistered)
+		return newOrderInfo(orderNumber, TestOrderStatusRegistered), nil
 	}
+}
 
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		cmlogger.Sug.Error(err)
-		return nil, ErrAccSysInternal
+func newOrderInfo(number, status string) *OrderAccrualInfo {
+	return &OrderAccrualInfo{
+		Order:  number,
+		Status: status,
 	}
+}
 
-	orderInfo := new(OrderAccrualInfo)
+func GetRand(n int) int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(n)
+}
 
-	err = json.Unmarshal(data, &orderInfo)
-	if err != nil {
-		cmlogger.Sug.Error(err)
-		return nil, ErrAccSysInternal
-	}
-
-	return orderInfo, nil
+func GetAccrual() decimal.Decimal {
+	rand.Seed(time.Now().UnixNano())
+	b := int64(rand.Intn(1000))
+	e := int32(rand.Intn(3) - 2)
+	return decimal.New(b, e)
 }

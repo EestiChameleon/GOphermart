@@ -19,8 +19,8 @@ type BalanceData struct {
 
 // WithdrawData - структура входящего запроса на списание бонусов в счет оплаты заказа
 type WithdrawData struct {
-	Order string              `json:"order"`
-	Sum   decimal.NullDecimal `json:"sum"`
+	Order string          `json:"order"`
+	Sum   decimal.Decimal `json:"sum"`
 }
 
 // WithdrawalsData - структура для запроса на вывод данных обо всех операциях списания бонусов

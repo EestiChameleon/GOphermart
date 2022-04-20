@@ -65,14 +65,25 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !res.Current.GreaterThanOrEqual(b.Sum.Decimal) {
-		cmlogger.Sug.Errorf("UserBalanceWithdraw GreaterThanOrEqual %v ? %v", res.Current, b.Sum.Decimal)
+	// разрешено ли списывать бонусы в счет уплаты
+	//allowed := res.Current.GreaterThanOrEqual(b.Sum)
+	//if !allowed {
+	//	cmlogger.Sug.Errorf("UserBalanceWithdraw GreaterThanOrEqual %v ? %v", res.Current, b.Sum)
+	//	resp.NoContent(w, http.StatusPaymentRequired)
+	//	return
+	//}
+	current, _ := res.Current.Float64()
+	sum, _ := b.Sum.Float64()
+	if current < sum {
+		cmlogger.Sug.Infow("current bonus balance is lower than required bonus", "current", current, "bonus required", sum, "status", "REFUSED")
 		resp.NoContent(w, http.StatusPaymentRequired)
 		return
 	}
+
 	// withdrawn record save and add new order record
 	balance := methods.NewBalanceRecord(userID, b.Order)
-	balance.Outcome = b.Sum
+	balance.Outcome.Decimal = b.Sum
+	balance.Outcome.Valid = true
 	if err = balance.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new balance record err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
