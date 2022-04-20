@@ -56,8 +56,10 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 			resp.NoContent(w, http.StatusOK)
 			return
 		case methods.ErrOrderWrongOwner:
-			cmlogger.Sug.Infow("new order conflict - owned by another user", "UserID", userID, "Number", orderNumber)
+			cmlogger.Sug.Infow("new order conflict - owned by another user",
+				"Requester", userID, "Number", orderNumber)
 			resp.NoContent(w, http.StatusConflict)
+			return
 		}
 	}
 
