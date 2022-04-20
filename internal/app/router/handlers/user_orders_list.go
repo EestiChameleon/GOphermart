@@ -3,7 +3,9 @@ package handlers
 import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"net/http"
+	"time"
 )
 
 // UserOrdersList получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
@@ -19,7 +21,7 @@ Content-Type: application/json
 	{
         "number": "9278923470",
         "status": "PROCESSED",
-        "accrual": 500,
+        "accrual": 700.98,
         "uploaded_at": "2020-12-10T15:15:45+03:00"
     },
     {
@@ -37,8 +39,22 @@ Content-Type: application/json
 401 — пользователь не авторизован.
 500 — внутренняя ошибка сервера.
 */
+
+type OrdersResponse struct {
+	Number     string    `json:"number"`
+	Status     string    `json:"status"`
+	Accrual    float64   `json:"accrual,omitempty"`
+	UploadedAt time.Time `json:"uploaded_at"`
+}
+
 func UserOrdersList(w http.ResponseWriter, r *http.Request) {
-	ordersList, err := methods.GetOrdersListByUserID()
+	userID := ctxfunc.GetUserIDFromCTX(r.Context())
+	if userID < 1 {
+		resp.NoContent(w, http.StatusUnauthorized)
+		return
+	}
+
+	ordersList, err := methods.GetOrdersListByUserID(userID)
 	if err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
@@ -49,5 +65,20 @@ func UserOrdersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp.JSON(w, http.StatusOK, ordersList)
+	resp.JSON(w, http.StatusOK, ConvertOrderListToResponse(ordersList))
+}
+
+func ConvertOrderListToResponse(list []*methods.Order) (responseList []*OrdersResponse) {
+	var newOrder OrdersResponse
+	for _, ord := range list {
+		newOrder.Number = ord.Number
+		newOrder.Status = ord.Status
+		accr, _ := ord.Accrual.Decimal.Float64()
+		newOrder.Accrual = accr
+		newOrder.UploadedAt = ord.UploadedAt
+
+		responseList = append(responseList, &newOrder)
+	}
+
+	return responseList
 }

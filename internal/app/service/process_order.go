@@ -3,9 +3,9 @@ package service
 import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/pkg/accrual"
 	"github.com/shopspring/decimal"
 	"log"
-	"net/http"
 	"time"
 )
 
@@ -17,7 +17,14 @@ INVALID — система расчёта вознаграждений отка�
 PROCESSED — данные по заказу проверены и информация о расчёте успешно получена.
 */
 
-func PollOrderCron(accrualClient AccrualSystem, cronPeriod time.Duration) {
+const (
+	OrderStatusNew        = "NEW"
+	OrderStatusProcessing = "PROCESSING"
+	OrderStatusInvalid    = "INVALID"
+	OrderStatusProcessed  = "PROCESSED"
+)
+
+func PollOrderCron(accrualClient accrual.AccrualSystem, cronPeriod time.Duration) {
 	ticker := time.NewTicker(cronPeriod)
 
 	for range ticker.C {
@@ -28,7 +35,7 @@ func PollOrderCron(accrualClient AccrualSystem, cronPeriod time.Duration) {
 	}
 }
 
-func processOrders(accrualClient AccrualSystem) error {
+func processOrders(accrualClient accrual.AccrualSystem) error {
 	// get all orders with NOT final status
 	orders, err := methods.GetOrdersListNotFinal()
 	if err != nil {
@@ -40,35 +47,33 @@ func processOrders(accrualClient AccrualSystem) error {
 
 	for _, order := range orders {
 		switch order.Status {
-		case "NEW":
-			o := methods.NewOrder(order.Number)
-			if err = o.UpdateStatus("PROCESSING"); err != nil {
+		case OrderStatusNew:
+			if err = order.UpdateStatus(OrderStatusProcessing); err != nil {
 				log.Printf("update order #%s failed: %v", order.Number, err)
 			}
 			continue
 
-		case "PROCESSING":
-			orderInfo := accrualClient.GetOrderInfo(order.Number)
-			if accrualClient.ReturnStatus() == http.StatusOK {
-				// successful request
-				if orderInfo.Status == "INVALID" {
-					if err = InvalidOrder(order.Number); err != nil {
-						cmlogger.Sug.Infow("update invalid order failed", "order", order.Number, "err", err)
-						continue
-					}
+		case OrderStatusProcessing:
+			orderInfo, err := accrualClient.GetOrderInfo(order.Number)
+			if err != nil {
+				cmlogger.Sug.Infow("accrual system err", "error", err)
+				continue
+			}
+
+			// successful request
+			if orderInfo.Status == accrual.OrderStatusInvalid {
+				if err = InvalidOrder(order); err != nil {
+					cmlogger.Sug.Infow("update invalid order failed", "order", order.Number, "err", err)
+					continue
 				}
-				if orderInfo.Status == "PROCESSED" {
-					if err = ProcessedOrder(order.Number, order.Accrual.Decimal); err != nil {
-						cmlogger.Sug.Infow("update processed order failed",
-							"order", order.Number,
-							"accrual", order.Accrual.Decimal,
-							"err", err)
-						continue
-					}
+			}
+			if orderInfo.Status == accrual.OrderStatusProcessed {
+				if err = ProcessedOrder(order, order.Accrual.Decimal); err != nil {
+					cmlogger.Sug.Infow("update processed order failed",
+						"order", order.Number,
+						"accrual", order.Accrual.Decimal,
+						"err", err)
 				}
-			} else {
-				cmlogger.Sug.Infow("accrual system NOK response status code",
-					"status code", accrualClient.ReturnStatus())
 			}
 		}
 	}
@@ -76,20 +81,19 @@ func processOrders(accrualClient AccrualSystem) error {
 	return nil
 }
 
-func InvalidOrder(number string) error {
-	o := methods.NewOrder(number)
-	return o.UpdateStatus("INVALID")
+func InvalidOrder(order *methods.Order) error {
+	return order.UpdateStatus(OrderStatusInvalid)
 }
 
-func ProcessedOrder(number string, accrual decimal.Decimal) error {
-	o := methods.NewOrder(number)
-	if err := o.SetProcessedAndAccrual(&accrual); err != nil {
+func ProcessedOrder(order *methods.Order, accrualValue decimal.Decimal) error {
+	if err := order.UpdStatusSetAccrual(OrderStatusProcessed, accrualValue); err != nil {
 		return err
 	}
 
-	b := methods.NewBalanceRecord()
-	b.OrderNumber = o.Number
-	b.Income = o.Accrual
+	order.Accrual.Decimal = accrualValue
+	order.Accrual.Valid = true
+	b := methods.NewBalanceRecord(order.UserID, order.Number)
+	b.Income = order.Accrual
 	if err := b.Add(); err != nil {
 		return err
 	}

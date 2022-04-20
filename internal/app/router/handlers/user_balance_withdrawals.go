@@ -4,6 +4,7 @@ import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"github.com/EestiChameleon/GOphermart/internal/models"
 	"net/http"
 )
@@ -30,8 +31,13 @@ Content-Length: 0
 500 — внутренняя ошибка сервера.
 */
 func UserBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
+	userID := ctxfunc.GetUserIDFromCTX(r.Context())
+	if userID < 1 {
+		resp.NoContent(w, http.StatusUnauthorized)
+		return
+	}
 	var ubw []*models.WithdrawalsData
-	if err := methods.GetUserWithdrawals(&ubw); err != nil {
+	if err := methods.GetUserWithdrawals(userID, &ubw); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdrawals GetUserWithdrawals err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return

@@ -3,7 +3,7 @@ package mw
 import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
-	"github.com/EestiChameleon/GOphermart/internal/app/storage"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func AuthCheck(next http.Handler) http.Handler {
 			return
 		}
 
-		storage.Pool.ID = int(userID.(float64))
-		next.ServeHTTP(w, r)
+		newCtx := ctxfunc.SetUserIDToCTX(r.Context(), userID)
+		next.ServeHTTP(w, r.WithContext(newCtx))
 	})
 }

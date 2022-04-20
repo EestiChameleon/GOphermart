@@ -14,7 +14,6 @@ var (
 )
 
 type DBStorage struct {
-	ID int // user_id of the current session - obtained from cookie via auth MW
 	DB *pgxpool.Pool
 }
 

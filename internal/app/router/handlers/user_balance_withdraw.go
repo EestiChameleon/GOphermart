@@ -6,6 +6,7 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"github.com/EestiChameleon/GOphermart/internal/models"
 	"io"
 	"net/http"
@@ -29,6 +30,12 @@ Content-Type: application/json
 500 — внутренняя ошибка сервера.
 */
 func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
+	userID := ctxfunc.GetUserIDFromCTX(r.Context())
+	if userID < 1 {
+		resp.NoContent(w, http.StatusUnauthorized)
+		return
+	}
+
 	var b models.WithdrawData
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -51,8 +58,7 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get current balance and whole withdrawn
-	blnc := methods.NewBalanceRecord()
-	res, err := blnc.GetBalanceAndWithdrawnByUserID()
+	res, err := methods.GetBalanceAndWithdrawnByUserID(userID)
 	if err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw GetBalanceAndWithdrawnByUserID err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
@@ -65,18 +71,19 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// withdrawn record save and add new order record
-	blnc.Outcome = b.Sum
-	blnc.OrderNumber = b.Order
+	balance := methods.NewBalanceRecord(userID, b.Order)
+	balance.Outcome = b.Sum
 
-	ordr := methods.NewOrder(b.Order)
+	order := methods.NewOrder(b.Order)
+	order.UserID = userID
 
-	if err = blnc.Add(); err != nil {
+	if err = balance.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new balance record err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 
-	if err = ordr.Add(); err != nil {
+	if err = order.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new order err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return

@@ -25,10 +25,8 @@ type Order struct {
 func NewOrder(number string) *Order {
 	return &Order{
 		Number:     number,
-		UserID:     db.Pool.ID,
 		UploadedAt: time.Now(),
 		Status:     "NEW",
-		Accrual:    decimal.NullDecimal{},
 	}
 }
 
@@ -80,10 +78,10 @@ func (o *Order) UpdateStatus(status string) error {
 	return nil
 }
 
-func (o *Order) SetProcessedAndAccrual(value *decimal.Decimal) error {
+func (o *Order) SetAccrual(value decimal.Decimal) error {
 	tag, err := db.Pool.DB.Exec(ctx,
-		"UPDATE orders SET status = $2, accrual = $3 WHERE number = $1;",
-		o.Number, "PROCESSED", value)
+		"UPDATE orders SET accrual = $2 WHERE number = $1;",
+		o.Number, value)
 
 	if err != nil {
 		return err
@@ -96,16 +94,28 @@ func (o *Order) SetProcessedAndAccrual(value *decimal.Decimal) error {
 	return nil
 }
 
-func GetOrdersListByUserID() ([]*Order, error) {
+func (o *Order) UpdStatusSetAccrual(status string, value decimal.Decimal) error {
+	if err := o.UpdateStatus(status); err != nil {
+		return err
+	}
+
+	if err := o.SetAccrual(value); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetOrdersListByUserID(uID int) ([]*Order, error) {
 	var list []*Order
 	err := pgxscan.Select(ctx, db.Pool.DB, &list,
-		"SELECT * FROM orders WHERE user_id=$1", db.Pool.ID)
+		"SELECT * FROM orders WHERE user_id=$1", uID)
 	return list, err
 }
 
 func GetOrdersListNotFinal() ([]*Order, error) {
 	var list []*Order
 	err := pgxscan.Select(ctx, db.Pool.DB, &list,
-		"SELECT number FROM orders WHERE status in ('NEW', 'PROCESSING');")
+		"SELECT * FROM orders WHERE status in ('NEW', 'PROCESSING');")
 	return list, err
 }

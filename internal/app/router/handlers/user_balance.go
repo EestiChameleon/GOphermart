@@ -3,8 +3,8 @@ package handlers
 import (
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
-	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"net/http"
 )
 
@@ -24,15 +24,33 @@ Content-Type: application/json
 401 — пользователь не авторизован.
 500 — внутренняя ошибка сервера.
 */
-func UserBalance(w http.ResponseWriter, r *http.Request) {
-	b := methods.NewBalanceRecord()
 
-	if res, err := b.GetBalanceAndWithdrawnByUserID(); err != nil {
+// CheckBalanceResponse special struct for yandex test check_balance which awaits float32 data
+type CheckBalanceResponse struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+
+func UserBalance(w http.ResponseWriter, r *http.Request) {
+	userID := ctxfunc.GetUserIDFromCTX(r.Context())
+	if userID < 1 {
+		resp.NoContent(w, http.StatusUnauthorized)
+		return
+	}
+
+	res, err := methods.GetBalanceAndWithdrawnByUserID(userID)
+	if err != nil {
 		cmlogger.Sug.Errorf("user balance err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
-	} else {
-		cmlogger.Sug.Infow("get user balance", "UserID", db.Pool.ID, "balance", res)
-		resp.JSON(w, http.StatusOK, res)
 	}
+
+	cmlogger.Sug.Infow("get user balance", "UserID", userID, "balance", res)
+	cur, _ := res.Current.Float64()
+	withdr, _ := res.Withdrawn.Float64()
+
+	resp.JSON(w, http.StatusOK, CheckBalanceResponse{
+		Current:   cur,
+		Withdrawn: withdr,
+	})
 }

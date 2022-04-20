@@ -7,6 +7,7 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"io"
 	"net/http"
 )
@@ -27,6 +28,12 @@ Content-Type: text/plain
 500 — внутренняя ошибка сервера.
 */
 func UserAddOrder(w http.ResponseWriter, r *http.Request) {
+	userID := ctxfunc.GetUserIDFromCTX(r.Context())
+	if userID < 1 {
+		resp.NoContent(w, http.StatusUnauthorized)
+		return
+	}
+
 	// read body
 	byteBody, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -46,7 +53,7 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmlogger.Sug.Infow("User Add Order start", "UserID", db.Pool.ID, "Order Number", orderNumber)
+	cmlogger.Sug.Infow("User Add Order start", "UserID", userID, "Order Number", orderNumber)
 	o := methods.NewOrder(orderNumber)
 	if err = o.GetByNumber(); err != nil {
 		if !errors.Is(err, db.ErrNotFound) { // in case NotFound - new order -> we can proceed
@@ -66,12 +73,12 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if db.Pool.ID == o.UserID { // case found - we compare currentSession.userID and DB.orders.userID
+	if userID == o.UserID { // case found - we compare currentSession.userID and DB.orders.userID
 		cmlogger.Sug.Infow("order already in process", "Number", orderNumber)
 		resp.NoContent(w, http.StatusOK)
 		return
 	} else { //case userIDs don't match
-		cmlogger.Sug.Infow("new order conflict", "UserID", db.Pool.ID, "Number", orderNumber)
+		cmlogger.Sug.Infow("new order conflict", "UserID", userID, "Number", orderNumber)
 		resp.NoContent(w, http.StatusConflict)
 		return
 	}

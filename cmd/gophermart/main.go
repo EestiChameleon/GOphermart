@@ -6,6 +6,7 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	"github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
+	"github.com/EestiChameleon/GOphermart/internal/pkg/accrual"
 	"time"
 )
 
@@ -26,11 +27,11 @@ func main() {
 	cmlogger.Sug.Info("DB connected")
 
 	// init accrual instance
-	service.AccrualBot = service.NewAccrualClient(cfg.Envs.AccrualSysAddr)
+	accrual.AccrualBot = accrual.NewAccrualClient(cfg.Envs.AccrualSysAddr)
 	cmlogger.Sug.Infow("accrual bot initiated", "Address:", cfg.Envs.AccrualSysAddr)
 
 	// start the order check loop
-	go service.PollOrderCron(service.AccrualBot, time.Second*60)
+	go service.PollOrderCron(accrual.AccrualBot, time.Second*60)
 	cmlogger.Sug.Info("PollOrderCron launched")
 
 	// start the service

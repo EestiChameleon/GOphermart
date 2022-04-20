@@ -22,14 +22,12 @@ type Balance struct {
 	OrderNumber string              `json:"order_number"`
 }
 
-func NewBalanceRecord() *Balance {
+func NewBalanceRecord(uID int, ordNumber string) *Balance {
 	return &Balance{
 		ID:          0,
-		UserID:      db.Pool.ID,
+		UserID:      uID,
 		ProcessedAt: time.Now(),
-		Income:      decimal.NullDecimal{},
-		Outcome:     decimal.NullDecimal{},
-		OrderNumber: "",
+		OrderNumber: ordNumber,
 	}
 }
 
@@ -60,11 +58,11 @@ func (b *Balance) Add() error {
 	return nil
 }
 
-func (b *Balance) GetBalanceAndWithdrawnByUserID() (*models.BalanceData, error) {
+func GetBalanceAndWithdrawnByUserID(uID int) (*models.BalanceData, error) {
 	var c, w decimal.NullDecimal
 	if err := db.Pool.DB.QueryRow(ctx,
 		"SELECT sum(income)-sum(outcome) as current, sum(outcome) as withdraw FROM balances WHERE user_id=$1;",
-		b.UserID).Scan(&c, &w); err != nil {
+		uID).Scan(&c, &w); err != nil {
 		return nil, err
 	}
 
@@ -74,8 +72,8 @@ func (b *Balance) GetBalanceAndWithdrawnByUserID() (*models.BalanceData, error) 
 	}, nil
 }
 
-func GetUserWithdrawals(dest interface{}) error {
+func GetUserWithdrawals(uID int, dest interface{}) error {
 	return pgxscan.Select(ctx, db.Pool.DB, dest,
 		"SELECT order_number as order, outcome as sum, processed_at "+
-			"FROM balances WHERE outcome != 0 AND user_id=$1;", db.Pool.ID)
+			"FROM balances WHERE outcome != 0 AND user_id=$1;", uID)
 }
