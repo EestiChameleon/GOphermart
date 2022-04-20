@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// start the order check loop
-	go service.PollOrderCron(accrual.AccrualBot, time.Second*5)
+	go service.PollOrderCron(accrual.AccrualBot, time.Second*0)
 	cmlogger.Sug.Info("PollOrderCron launched")
 
 	// start the service
