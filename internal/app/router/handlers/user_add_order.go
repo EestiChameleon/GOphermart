@@ -70,5 +70,4 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 
 	cmlogger.Sug.Infow("new order accepted", "Number", orderNumber)
 	resp.NoContent(w, http.StatusAccepted)
-	return
 }
