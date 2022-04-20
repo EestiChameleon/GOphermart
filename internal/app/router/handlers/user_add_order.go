@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"errors"
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
-	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"io"
@@ -19,13 +17,13 @@ Content-Type: text/plain
 12345678903
 
 Возможные коды ответа:
-200 — номер заказа уже был загружен этим пользователем;
-202 — новый номер заказа принят в обработку;
-400 — неверный формат запроса;
-401 — пользователь не аутентифицирован;
-409 — номер заказа уже был загружен другим пользователем;
-422 — неверный формат номера заказа;
-500 — внутренняя ошибка сервера.
+200 — номер заказа уже был загружен этим пользователем; +
+202 — новый номер заказа принят в обработку; +
+400 — неверный формат запроса; +
+401 — пользователь не аутентифицирован; +
+409 — номер заказа уже был загружен другим пользователем; +
+422 — неверный формат номера заказа; +
+500 — внутренняя ошибка сервера. +
 */
 func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
@@ -41,45 +39,36 @@ func UserAddOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if it's not empty
+	// check order number - empty or Luhn
 	orderNumber := string(byteBody)
-	if orderNumber == "" {
-		resp.WriteString(w, http.StatusBadRequest, "empty input")
-		return
-	}
-
-	if !service.LuhnCheck(orderNumber) {
+	if orderNumber == "" || !service.LuhnCheck(orderNumber) {
 		resp.WriteString(w, http.StatusUnprocessableEntity, "invalid order number")
 		return
 	}
 
 	cmlogger.Sug.Infow("User Add Order start", "UserID", userID, "Order Number", orderNumber)
-	o := methods.NewOrder(orderNumber)
-	if err = o.GetByNumber(); err != nil {
-		if !errors.Is(err, db.ErrNotFound) { // in case NotFound - new order -> we can proceed
-			cmlogger.Sug.Error("order.GetByNumber err:%v", err)
-			resp.NoContent(w, http.StatusInternalServerError)
-			return
-		}
+	o := methods.NewOrder(userID, orderNumber)
 
-		if err = o.Add(); err != nil { // new order add to table
-			cmlogger.Sug.Error("order.Add err:%v", err)
-			resp.NoContent(w, http.StatusInternalServerError)
+	if err = o.CheckNumber(); err != nil {
+		switch err {
+		case methods.ErrOrderAlreadyExists:
+			cmlogger.Sug.Infow("order already in process", "Number", orderNumber)
+			resp.NoContent(w, http.StatusOK)
 			return
+		case methods.ErrOrderWrongOwner:
+			cmlogger.Sug.Infow("new order conflict - owned by another user", "UserID", userID, "Number", orderNumber)
+			resp.NoContent(w, http.StatusConflict)
 		}
+	}
 
-		cmlogger.Sug.Infow("new order accepted", "Number", orderNumber)
-		resp.NoContent(w, http.StatusAccepted)
+	// after check is done - we are sure that the order is new = we can save it
+	if err = o.Add(); err != nil { // new order add to table
+		cmlogger.Sug.Error("order.Add err:%v", err)
+		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 
-	if userID == o.UserID { // case found - we compare currentSession.userID and DB.orders.userID
-		cmlogger.Sug.Infow("order already in process", "Number", orderNumber)
-		resp.NoContent(w, http.StatusOK)
-		return
-	} else { //case userIDs don't match
-		cmlogger.Sug.Infow("new order conflict", "UserID", userID, "Number", orderNumber)
-		resp.NoContent(w, http.StatusConflict)
-		return
-	}
+	cmlogger.Sug.Infow("new order accepted", "Number", orderNumber)
+	resp.NoContent(w, http.StatusAccepted)
+	return
 }

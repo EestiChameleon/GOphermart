@@ -73,16 +73,13 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 	// withdrawn record save and add new order record
 	balance := methods.NewBalanceRecord(userID, b.Order)
 	balance.Outcome = b.Sum
-
-	order := methods.NewOrder(b.Order)
-	order.UserID = userID
-
 	if err = balance.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new balance record err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 
+	order := methods.NewOrder(userID, b.Order)
 	if err = order.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new order err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)

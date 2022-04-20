@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	ErrOrderInsertFailed = errors.New("failed to save new order")
-	ErrOrderUpdateFailed = errors.New("failed to update order")
+	ErrOrderInsertFailed  = errors.New("failed to save new order")
+	ErrOrderUpdateFailed  = errors.New("failed to update order")
+	ErrOrderWrongOwner    = errors.New("order with provided number owned by another user")
+	ErrOrderAlreadyExists = errors.New("order with provided number already exists in database")
 )
 
 type Order struct {
@@ -22,15 +24,34 @@ type Order struct {
 	Accrual    decimal.NullDecimal `json:"accrual,omitempty"`
 }
 
-func NewOrder(number string) *Order {
+func NewOrder(uID int, number string) *Order {
 	return &Order{
 		Number:     number,
+		UserID:     uID,
 		UploadedAt: time.Now(),
 		Status:     "NEW",
 	}
 }
 
-type myTime time.Time
+// CheckNumber verify the order number. 1) Check for existence. 2) Check for correct UserID
+//
+func (o *Order) CheckNumber() error {
+	var dbUsedID int
+	if err := db.Pool.DB.QueryRow(ctx, "SELECT user_id FROM orders WHERE number=$1", o.Number).Scan(&dbUsedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// order not found - ok
+			return nil
+		}
+		return err
+	}
+
+	// order found - check userID match
+	if dbUsedID != o.UserID {
+		return ErrOrderWrongOwner
+	}
+
+	return ErrOrderAlreadyExists
+}
 
 func (o *Order) GetByNumber() error {
 	err := pgxscan.Get(ctx, db.Pool.DB, o,
