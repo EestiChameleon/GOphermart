@@ -5,7 +5,6 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"net/http"
-	"time"
 )
 
 // UserOrdersList получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
@@ -40,13 +39,6 @@ Content-Type: application/json
 500 — внутренняя ошибка сервера.
 */
 
-type OrdersResponse struct {
-	Number     string    `json:"number"`
-	Status     string    `json:"status"`
-	Accrual    float64   `json:"accrual,omitempty"`
-	UploadedAt time.Time `json:"uploaded_at"`
-}
-
 func UserOrdersList(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {
@@ -65,20 +57,5 @@ func UserOrdersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp.JSON(w, http.StatusOK, ConvertOrderListToResponse(ordersList))
-}
-
-func ConvertOrderListToResponse(list []*methods.Order) (responseList []*OrdersResponse) {
-	var newOrder OrdersResponse
-	for _, ord := range list {
-		newOrder.Number = ord.Number
-		newOrder.Status = ord.Status
-		accr, _ := ord.Accrual.Decimal.Float64()
-		newOrder.Accrual = accr
-		newOrder.UploadedAt = ord.UploadedAt
-
-		responseList = append(responseList, &newOrder)
-	}
-
-	return responseList
+	resp.JSON(w, http.StatusOK, ordersList)
 }
