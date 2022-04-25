@@ -2,7 +2,6 @@ package accrual
 
 import (
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
-	"github.com/shopspring/decimal"
 	"math/rand"
 	"time"
 )
@@ -65,15 +64,15 @@ func NewTestAccrualClient(address string) *TestAccrualClient {
 }
 
 func (ac *TestAccrualClient) GetOrderInfo(orderNumber string) (*OrderAccrualInfo, error) {
-	x := GetRand(4)
+	x := GetRand(2)
 	switch x {
-	case 1: // processing / registered
+	case 3: // processing / registered
 		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusProcessing)
 		return newOrderInfo(orderNumber, TestOrderStatusProcessing), nil
 	case 2: // invalid
 		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusInvalid)
 		return newOrderInfo(orderNumber, TestOrderStatusInvalid), nil
-	case 3: // processed
+	case 1: // processed
 		order := newOrderInfo(orderNumber, TestOrderStatusProcessed)
 		order.Accrual = GetAccrual()
 		cmlogger.Sug.Infow("order info case", "Number", orderNumber, "Status", TestOrderStatusProcessed, "Accrual", order.Accrual)
@@ -98,9 +97,8 @@ func GetRand(n int) int {
 	return rand.Intn(n)
 }
 
-func GetAccrual() decimal.Decimal {
+func GetAccrual() float64 {
 	rand.Seed(time.Now().UnixNano())
-	b := int64(rand.Intn(1000))
-	e := int32(rand.Intn(3) - 2)
-	return decimal.New(b, e)
+
+	return float64(rand.Intn(100000)) / 100
 }

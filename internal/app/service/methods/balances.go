@@ -1,11 +1,11 @@
 package methods
 
 import (
+	"database/sql"
 	"errors"
 	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/models"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -14,12 +14,12 @@ var (
 )
 
 type Balance struct {
-	ID          int                 `json:"id"`
-	UserID      int                 `json:"user_id"`
-	ProcessedAt time.Time           `json:"processed_at"`
-	Income      decimal.NullDecimal `json:"income"`
-	Outcome     decimal.NullDecimal `json:"outcome"`
-	OrderNumber string              `json:"order_number"`
+	ID          int       `json:"id"`
+	UserID      int       `json:"user_id"`
+	ProcessedAt time.Time `json:"processed_at"`
+	Income      int       `json:"income"`
+	Outcome     int       `json:"outcome"`
+	OrderNumber string    `json:"order_number"`
 }
 
 func NewBalanceRecord(uID int, ordNumber string) *Balance {
@@ -32,16 +32,6 @@ func NewBalanceRecord(uID int, ordNumber string) *Balance {
 }
 
 func (b *Balance) Add() error {
-	if !b.Income.Valid {
-		b.Income.Valid = true
-		b.Income.Decimal = decimal.NewFromInt(0)
-	}
-
-	if !b.Outcome.Valid {
-		b.Outcome.Valid = true
-		b.Outcome.Decimal = decimal.NewFromInt(0)
-	}
-
 	err := db.Pool.DB.QueryRow(ctx,
 		"INSERT INTO balances(user_id, processed_at, income, outcome, order_number) "+
 			"VALUES ($1, $2, $3, $4, $5) RETURNING id;",
@@ -59,7 +49,7 @@ func (b *Balance) Add() error {
 }
 
 func GetBalanceAndWithdrawnByUserID(uID int) (*models.BalanceData, error) {
-	var c, w decimal.NullDecimal
+	var c, w sql.NullInt64
 	if err := db.Pool.DB.QueryRow(ctx,
 		"SELECT sum(income)-sum(outcome) as current, sum(outcome) as withdraw FROM balances WHERE user_id=$1;",
 		uID).Scan(&c, &w); err != nil {
@@ -67,13 +57,19 @@ func GetBalanceAndWithdrawnByUserID(uID int) (*models.BalanceData, error) {
 	}
 
 	return &models.BalanceData{
-		Current:   c.Decimal,
-		Withdrawn: w.Decimal,
+		Current:   float64(c.Int64) / 100,
+		Withdrawn: float64(w.Int64) / 100,
 	}, nil
 }
 
-func GetUserWithdrawals(uID int, dest interface{}) error {
-	return pgxscan.Select(ctx, db.Pool.DB, dest,
+func GetUserWithdrawals(uID int) ([]*models.WithdrawalsData, error) {
+	var list []*models.WithdrawalsData
+	err := pgxscan.Select(ctx, db.Pool.DB, &list,
 		"SELECT order_number as order, outcome as sum, processed_at "+
 			"FROM balances WHERE outcome != 0 AND user_id=$1;", uID)
+	if err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }

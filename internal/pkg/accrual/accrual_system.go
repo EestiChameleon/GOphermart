@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
-	"github.com/shopspring/decimal"
 	"io"
 	"net/http"
 )
@@ -68,9 +67,9 @@ type AccrualSystem interface {
 
 // OrderAccrualInfo - response
 type OrderAccrualInfo struct {
-	Order   string          `json:"order"`
-	Status  string          `json:"status"`
-	Accrual decimal.Decimal `json:"accrual"`
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual"`
 }
 
 type AccrualClient struct {

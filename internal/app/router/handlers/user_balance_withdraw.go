@@ -29,6 +29,7 @@ Content-Type: application/json
 422 — неверный номер заказа;
 500 — внутренняя ошибка сервера.
 */
+
 func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {
@@ -44,8 +45,7 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.Unmarshal(data, &b)
-	if err != nil {
+	if err = json.Unmarshal(data, &b); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw Unmarshal body err:%v", err)
 		resp.NoContent(w, http.StatusBadRequest)
 		return
@@ -66,24 +66,16 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// разрешено ли списывать бонусы в счет уплаты
-	//allowed := res.Current.GreaterThanOrEqual(b.Sum)
-	//if !allowed {
-	//	cmlogger.Sug.Errorf("UserBalanceWithdraw GreaterThanOrEqual %v ? %v", res.Current, b.Sum)
-	//	resp.NoContent(w, http.StatusPaymentRequired)
-	//	return
-	//}
-	current, _ := res.Current.Float64()
-	sum, _ := b.Sum.Float64()
-	if current < sum {
-		cmlogger.Sug.Infow("current bonus balance is lower than required bonus", "current", current, "bonus required", sum, "status", "REFUSED")
+	if res.Current < b.Sum {
+		cmlogger.Sug.Infow("current bonus balance is lower than required bonus",
+			"current", res.Current, "bonus required", res.Withdrawn, "status", "REFUSED")
 		resp.NoContent(w, http.StatusPaymentRequired)
 		return
 	}
 
-	// withdrawn record save and add new order record
+	// withdrawn sum save and add new order record. Convert sum float to int
 	balance := methods.NewBalanceRecord(userID, b.Order)
-	balance.Outcome.Decimal = b.Sum
-	balance.Outcome.Valid = true
+	balance.Outcome = int(b.Sum * 100) // 758.99 -> 75899
 	if err = balance.Add(); err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdraw add new balance record err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)

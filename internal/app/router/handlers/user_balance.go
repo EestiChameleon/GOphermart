@@ -25,12 +25,6 @@ Content-Type: application/json
 500 — внутренняя ошибка сервера.
 */
 
-// CheckBalanceResponse special struct for yandex test check_balance which awaits float32 data
-type CheckBalanceResponse struct {
-	Current   float64 `json:"current"`
-	Withdrawn float64 `json:"withdrawn"`
-}
-
 func UserBalance(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {
@@ -46,11 +40,5 @@ func UserBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmlogger.Sug.Infow("get user balance", "UserID", userID, "balance", res)
-	cur, _ := res.Current.Float64()
-	withdr, _ := res.Withdrawn.Float64()
-
-	resp.JSON(w, http.StatusOK, CheckBalanceResponse{
-		Current:   cur,
-		Withdrawn: withdr,
-	})
+	resp.JSON(w, http.StatusOK, res)
 }

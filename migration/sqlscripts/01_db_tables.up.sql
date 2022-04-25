@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS orders
     user_id     int           not null,
     uploaded_at timestamp with time zone not null,
     status      STATS         not null,
-    accrual     numeric
+    accrual     integer default 0
 );
 create unique index orders_number_uindex
     on orders (number);
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS balances
     primary key,
     user_id      int           not null,
     processed_at timestamp with time zone not null,
-    income       numeric default 0 not null,
-    outcome      numeric default 0 not null,
+    income       integer default 0 not null,
+    outcome      integer default 0 not null,
     order_number varchar       not null
 );
 

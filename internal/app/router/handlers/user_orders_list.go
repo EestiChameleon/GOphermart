@@ -5,6 +5,7 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"net/http"
+	"time"
 )
 
 // UserOrdersList получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
@@ -39,6 +40,14 @@ Content-Type: application/json
 500 — внутренняя ошибка сервера.
 */
 
+type ResponseOrderList struct {
+	Number     string    `json:"number"`
+	UserID     int       `json:"user_id"`
+	UploadedAt time.Time `json:"uploaded_at"`
+	Status     string    `json:"status"`
+	Accrual    float64   `json:"accrual,omitempty"`
+}
+
 func UserOrdersList(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {
@@ -46,16 +55,30 @@ func UserOrdersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ordersList, err := methods.GetOrdersListByUserID(userID)
+	DBordersList, err := methods.GetOrdersListByUserID(userID)
 	if err != nil {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 
-	if len(ordersList) == 0 {
+	if len(DBordersList) == 0 {
 		resp.NoContent(w, http.StatusNoContent)
 		return
 	}
 
-	resp.JSON(w, http.StatusOK, ordersList)
+	resp.JSON(w, http.StatusOK, convertOrderList(DBordersList))
+}
+
+func convertOrderList(list []*methods.Order) (respList []*ResponseOrderList) {
+	for _, el := range list {
+
+		respList = append(respList, &ResponseOrderList{
+			Number:     el.Number,
+			UserID:     el.UserID,
+			UploadedAt: el.UploadedAt,
+			Status:     el.Status,
+			Accrual:    float64(el.Accrual) / 100,
+		})
+	}
+	return respList
 }

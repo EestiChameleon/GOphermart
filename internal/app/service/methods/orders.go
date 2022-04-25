@@ -5,7 +5,6 @@ import (
 	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
-	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -17,11 +16,11 @@ var (
 )
 
 type Order struct {
-	Number     string              `json:"number"`
-	UserID     int                 `json:"user_id"`
-	UploadedAt time.Time           `json:"uploaded_at"` // my time type
-	Status     string              `json:"status"`
-	Accrual    decimal.NullDecimal `json:"accrual,omitempty"`
+	Number     string    `json:"number"`
+	UserID     int       `json:"user_id"`
+	UploadedAt time.Time `json:"uploaded_at"` // my time type
+	Status     string    `json:"status"`
+	Accrual    int       `json:"accrual"`
 }
 
 func NewOrder(uID int, number string) *Order {
@@ -36,8 +35,8 @@ func NewOrder(uID int, number string) *Order {
 // CheckNumber verify the order number. 1) Check for existence. 2) Check for correct UserID
 //
 func (o *Order) CheckNumber() error {
-	var dbUsedID int
-	if err := db.Pool.DB.QueryRow(ctx, "SELECT user_id FROM orders WHERE number=$1", o.Number).Scan(&dbUsedID); err != nil {
+	var dbUserID int
+	if err := db.Pool.DB.QueryRow(ctx, "SELECT user_id FROM orders WHERE number=$1", o.Number).Scan(&dbUserID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// order not found - ok
 			return nil
@@ -46,7 +45,7 @@ func (o *Order) CheckNumber() error {
 	}
 
 	// order found - check userID match
-	if dbUsedID != o.UserID {
+	if dbUserID != o.UserID {
 		return ErrOrderWrongOwner
 	}
 
@@ -99,7 +98,7 @@ func (o *Order) UpdateStatus(status string) error {
 	return nil
 }
 
-func (o *Order) SetAccrual(value decimal.Decimal) error {
+func (o *Order) SetAccrual(value int) error {
 	tag, err := db.Pool.DB.Exec(ctx,
 		"UPDATE orders SET accrual = $2 WHERE number = $1;",
 		o.Number, value)
@@ -115,7 +114,7 @@ func (o *Order) SetAccrual(value decimal.Decimal) error {
 	return nil
 }
 
-func (o *Order) UpdStatusSetAccrual(status string, value decimal.Decimal) error {
+func (o *Order) UpdStatusSetAccrual(status string, value int) error {
 	if err := o.UpdateStatus(status); err != nil {
 		return err
 	}

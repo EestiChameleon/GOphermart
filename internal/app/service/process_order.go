@@ -4,7 +4,6 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"github.com/EestiChameleon/GOphermart/internal/pkg/accrual"
-	"github.com/shopspring/decimal"
 	"log"
 	"time"
 )
@@ -26,10 +25,14 @@ const (
 
 func PollOrderCron(accrualClient accrual.AccrualSystem, cronPeriod time.Duration) {
 	ticker := time.NewTicker(cronPeriod)
-
+	// instant call
+	if err := processOrders(accrualClient); err != nil {
+		log.Println("First PollOrderCron call err:", err)
+	}
+	// then - loop with timer
 	for range ticker.C {
 		if err := processOrders(accrualClient); err != nil {
-			log.Println("PollOrderCron err:", err)
+			log.Println("Loop PollOrderCron err:", err)
 			continue
 		}
 	}
@@ -68,10 +71,10 @@ func processOrders(accrualClient accrual.AccrualSystem) error {
 				}
 			}
 			if orderInfo.Status == accrual.OrderStatusProcessed {
-				if err = ProcessedOrder(order, orderInfo.Accrual); err != nil {
+				if err = ProcessedOrder(order, int(orderInfo.Accrual*100)); err != nil {
 					cmlogger.Sug.Infow("update processed order failed",
 						"order", order.Number,
-						"accrual", order.Accrual.Decimal,
+						"accrual", order.Accrual,
 						"err", err)
 				}
 			}
@@ -85,17 +88,15 @@ func InvalidOrder(order *methods.Order) error {
 	return order.UpdateStatus(OrderStatusInvalid)
 }
 
-func ProcessedOrder(order *methods.Order, accrualValue decimal.Decimal) error {
+func ProcessedOrder(order *methods.Order, accrualValue int) error {
 	cmlogger.Sug.Infow("PROCESSED order", "Number", order.Number, "Accrual", accrualValue)
 	if err := order.UpdStatusSetAccrual(OrderStatusProcessed, accrualValue); err != nil {
 		return err
 	}
+	order.Accrual = accrualValue
 
-	order.Accrual.Decimal = accrualValue
-	order.Accrual.Valid = true
 	b := methods.NewBalanceRecord(order.UserID, order.Number)
-	b.Income.Decimal = accrualValue
-	b.Income.Valid = true
+	b.Income = accrualValue
 	if err := b.Add(); err != nil {
 		return err
 	}

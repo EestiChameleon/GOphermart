@@ -7,6 +7,7 @@ import (
 	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"github.com/EestiChameleon/GOphermart/internal/models"
 	"net/http"
+	"time"
 )
 
 // UserBalanceWithdrawals получение информации о выводе средств с накопительного счёта пользователем
@@ -30,14 +31,22 @@ Content-Length: 0
 401 — пользователь не авторизован.
 500 — внутренняя ошибка сервера.
 */
+
+type ResponseUserWithdrawals struct {
+	Order       string    `json:"order"`
+	Sum         float64   `json:"sum"`
+	ProcessedAt time.Time `json:"processed_at"`
+}
+
 func UserBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {
 		resp.NoContent(w, http.StatusUnauthorized)
 		return
 	}
-	var ubw []*models.WithdrawalsData
-	if err := methods.GetUserWithdrawals(userID, &ubw); err != nil {
+
+	ubw, err := methods.GetUserWithdrawals(userID)
+	if err != nil {
 		cmlogger.Sug.Errorf("UserBalanceWithdrawals GetUserWithdrawals err:%v", err)
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
@@ -48,5 +57,17 @@ func UserBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp.JSON(w, http.StatusOK, ubw)
+	resp.JSON(w, http.StatusOK, convertWithdrawalsList(ubw))
+}
+
+func convertWithdrawalsList(list []*models.WithdrawalsData) (respList []*ResponseUserWithdrawals) {
+	for _, el := range list {
+
+		respList = append(respList, &ResponseUserWithdrawals{
+			Order:       el.Order,
+			Sum:         float64(el.Sum) / 100,
+			ProcessedAt: el.ProcessedAt,
+		})
+	}
+	return respList
 }
