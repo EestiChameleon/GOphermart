@@ -24,7 +24,6 @@ Content-Type: application/json
 401 — пользователь не авторизован.
 500 — внутренняя ошибка сервера.
 */
-
 func UserBalance(w http.ResponseWriter, r *http.Request) {
 	userID := ctxfunc.GetUserIDFromCTX(r.Context())
 	if userID < 1 {

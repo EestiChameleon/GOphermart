@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
-	s "github.com/EestiChameleon/GOphermart/internal/app/service"
-	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
+	"github.com/EestiChameleon/GOphermart/internal/app/service"
 	db "github.com/EestiChameleon/GOphermart/internal/app/storage"
 	"github.com/EestiChameleon/GOphermart/internal/models"
 	"io"
@@ -49,24 +48,13 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := methods.NewUser(b.Login, b.Password)
-	if err = u.GetByLogin(); err != nil {
-		if errors.Is(err, db.ErrNotFound) {
-			resp.NoContent(w, http.StatusUnauthorized)
-			return
-		}
+	token, err := service.CheckAuthData(b)
+	if err != nil && !errors.Is(err, service.ErrWrongAuthData) && !errors.Is(err, db.ErrNotFound) {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
-
-	if s.EncryptPass(b.Password) != u.Password {
+	if errors.Is(err, service.ErrWrongAuthData) || errors.Is(err, db.ErrNotFound) {
 		resp.NoContent(w, http.StatusUnauthorized)
-		return
-	}
-
-	token, err := s.JWTEncodeUserID(u.ID)
-	if err != nil {
-		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 

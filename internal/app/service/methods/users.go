@@ -36,11 +36,11 @@ func (u *User) GetByLogin() error {
 	err := pgxscan.Get(context.Background(), db.Pool.DB, u,
 		"SELECT id, registered_at, password, last_sign_in FROM users WHERE login=$1", u.Login)
 
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return db.ErrNotFound
-		}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.ErrNotFound
 	}
 
 	return nil
@@ -54,11 +54,11 @@ func (u *User) Add() error {
 			"RETURNING id;",
 		u.RegisteredAt, u.Login, u.Password, u.LastSignIn).Scan(&u.ID)
 
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrLoginUnavailable
-		}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrLoginUnavailable
 	}
 
 	return nil

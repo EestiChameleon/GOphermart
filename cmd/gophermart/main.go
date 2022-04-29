@@ -26,7 +26,7 @@ func main() {
 	defer storage.Shutdown()
 	cmlogger.Sug.Info("DB connected")
 
-	//// init accrual instance
+	// init accrual instance
 	if cfg.Envs.AccrualSysAddr != "http://localhost:666" {
 		accrual.AccrualBot = accrual.NewAccrualClient(cfg.Envs.AccrualSysAddr)
 		cmlogger.Sug.Infow("accrual bot initiated", "Address:", cfg.Envs.AccrualSysAddr)
@@ -37,7 +37,8 @@ func main() {
 	}
 
 	// start the order check loop
-	go service.PollOrderCron(accrual.AccrualBot, time.Second*1)
+
+	go service.PollOrderCron(accrual.AccrualBot, time.Second*time.Duration(cfg.Envs.CronCooldown))
 	cmlogger.Sug.Info("PollOrderCron launched")
 
 	// start the service

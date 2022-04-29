@@ -36,12 +36,13 @@ func NewOrder(uID int, number string) *Order {
 //
 func (o *Order) CheckNumber() error {
 	var dbUserID int
-	if err := db.Pool.DB.QueryRow(ctx, "SELECT user_id FROM orders WHERE number=$1", o.Number).Scan(&dbUserID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			// order not found - ok
-			return nil
-		}
+	err := db.Pool.DB.QueryRow(ctx, "SELECT user_id FROM orders WHERE number=$1", o.Number).Scan(&dbUserID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		// order not found - ok
+		return nil
 	}
 
 	// order found - check userID match
@@ -55,11 +56,11 @@ func (o *Order) CheckNumber() error {
 func (o *Order) GetByNumber() error {
 	err := pgxscan.Get(ctx, db.Pool.DB, o,
 		"SELECT user_id, uploaded_at, status FROM orders WHERE number=$1", o.Number)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return db.ErrNotFound
-		}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.ErrNotFound
 	}
 
 	return nil

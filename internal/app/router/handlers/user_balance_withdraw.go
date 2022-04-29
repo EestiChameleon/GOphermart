@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	resp "github.com/EestiChameleon/GOphermart/internal/app/router/responses"
 	"github.com/EestiChameleon/GOphermart/internal/app/service"
-	"github.com/EestiChameleon/GOphermart/internal/app/service/methods"
 	"github.com/EestiChameleon/GOphermart/internal/cmlogger"
 	"github.com/EestiChameleon/GOphermart/internal/ctxfunc"
 	"github.com/EestiChameleon/GOphermart/internal/models"
@@ -57,35 +57,14 @@ func UserBalanceWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// get current balance and whole withdrawn
-	res, err := methods.GetBalanceAndWithdrawnByUserID(userID)
-	if err != nil {
-		cmlogger.Sug.Errorf("UserBalanceWithdraw GetBalanceAndWithdrawnByUserID err:%v", err)
+	// proceed new balance withdraw
+	err = service.BalanceWithdraw(userID, b)
+	if err != nil && !errors.Is(err, service.ErrWithdrawUnavailable) {
 		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
-
-	// разрешено ли списывать бонусы в счет уплаты
-	if res.Current < b.Sum {
-		cmlogger.Sug.Infow("current bonus balance is lower than required bonus",
-			"current", res.Current, "bonus required", res.Withdrawn, "status", "REFUSED")
+	if errors.Is(err, service.ErrWithdrawUnavailable) {
 		resp.NoContent(w, http.StatusPaymentRequired)
-		return
-	}
-
-	// withdrawn sum save and add new order record. Convert sum float to int
-	balance := methods.NewBalanceRecord(userID, b.Order)
-	balance.Outcome = int(b.Sum * 100) // 758.99 -> 75899
-	if err = balance.Add(); err != nil {
-		cmlogger.Sug.Errorf("UserBalanceWithdraw add new balance record err:%v", err)
-		resp.NoContent(w, http.StatusInternalServerError)
-		return
-	}
-
-	order := methods.NewOrder(userID, b.Order)
-	if err = order.Add(); err != nil {
-		cmlogger.Sug.Errorf("UserBalanceWithdraw add new order err:%v", err)
-		resp.NoContent(w, http.StatusInternalServerError)
 		return
 	}
 
