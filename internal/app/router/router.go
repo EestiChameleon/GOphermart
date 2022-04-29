@@ -23,15 +23,19 @@ func Start() error {
 	//router.Use(mw.GZIP)
 
 	// Routes
-	router.With(mw.AuthCheck).Get("/api/user/orders", h.UserOrdersList)
-	router.With(mw.AuthCheck).Get("/api/user/balance", h.UserBalance)
-	router.With(mw.AuthCheck).Get("/api/user/balance/withdrawals", h.UserBalanceWithdrawals)
 
 	router.Post("/api/user/register", h.UserRegister)
 	router.Post("/api/user/login", h.UserLogin)
 
-	router.With(mw.AuthCheck).Post("/api/user/orders", h.UserAddOrder)
-	router.With(mw.AuthCheck).Post("/api/user/balance/withdraw", h.UserBalanceWithdraw)
+	router.With(mw.AuthCheck).Route("/api/user", func(r chi.Router) {
+		r.Get("/orders", h.UserOrdersList)
+		r.Get("/balance", h.UserBalance)
+		r.Get("/balance/withdrawals", h.UserBalanceWithdrawals)
+
+		r.Post("/orders", h.UserAddOrder)
+		r.Post("/balance/withdraw", h.UserBalanceWithdraw)
+
+	})
 
 	// Start server
 	s := http.Server{
